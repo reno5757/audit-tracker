@@ -1,6 +1,7 @@
-// app/page.tsx (server component)
+// app/page.tsx
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import ProjectsClient from "@/components/ProjectsClient";
 
 export const revalidate = 0;
 
@@ -29,13 +30,49 @@ type FileRow = {
 };
 
 const fmtDate = (d: string | null) =>
-  !d ? "" : (isNaN(+new Date(d)) ? d! : new Date(d!).toISOString().slice(0, 10));
+  !d ? "" : isNaN(+new Date(d)) ? (d as string) : new Date(d as string).toISOString().slice(0, 10);
+
+const basename = (p?: string | null) => {
+  if (!p) return "";
+  const i = p.lastIndexOf("/");
+  return i >= 0 ? p.slice(i + 1) : p;
+};
+
+const FILE_SLOTS = [
+  "inspectionPlanPDF",
+  "auditReportPDF",
+  "auditReportWord",
+  "invoicePDF",
+  "travelFeesZIP",
+] as const;
+
+type FileSlot = (typeof FILE_SLOTS)[number];
+type FileSlots = Partial<Record<FileSlot, { href: string; label: string }>>;
+
+const classifyFile = (f: FileRow): FileSlot | undefined => {
+  const k = (f.kind || "").toLowerCase();
+  const m = (f.mime || "").toLowerCase();
+  const p = (f.path || "").toLowerCase();
+  const has = (s: string) => k.includes(s) || p.includes(s);
+
+  if ((m.includes("pdf") || has("pdf")) && (has("inspection") || has("plan") || has("inspection_plan")))
+    return "inspectionPlanPDF";
+  if (m.includes("pdf") && (has("audit") || has("report"))) return "auditReportPDF";
+  if (
+    (m.includes("word") || m.includes("msword") || m.includes("doc") || m.includes("docx") || p.endsWith(".doc") || p.endsWith(".docx")) &&
+    (has("audit") || has("report"))
+  )
+    return "auditReportWord";
+  if ((m.includes("pdf") || has("pdf")) && (has("invoice") || has("facture"))) return "invoicePDF";
+  if ((m.includes("zip") || p.endsWith(".zip")) && (has("travel") || has("fees") || has("expenses") || has("frais") || has("deplacement")))
+    return "travelFeesZIP";
+  return undefined;
+};
 
 export default async function Page() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // Fetch projects
   const { data: projData, error: pErr } = await supabase
     .from("projects")
     .select(
@@ -45,148 +82,49 @@ export default async function Page() {
     .order("id", { ascending: false });
 
   if (pErr) {
-    console.error(pErr);
     return (
-      <main style={{ padding: 16 }}>
-        <h1>Projects</h1>
-        <p style={{ color: "crimson" }}>Error: {pErr.message}</p>
+      <main className="mx-auto max-w-7xl p-6 lg:p-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <h1 className="text-lg font-semibold">Projects</h1>
+        </div>
+        <p className="mt-2 text-sm text-red-700">Error: {pErr.message}</p>
       </main>
     );
   }
 
-  const projects: Project[] = projData ?? [];
-
-  // Fetch files (separate query works regardless of FK setup)
   const { data: fileData, error: fErr } = await supabase
     .from("files")
     .select("id, project_id, kind, path, mime, size, uploaded_by, uploaded_at");
+  if (fErr) console.error(fErr);
 
-  if (fErr) {
-    console.error(fErr);
-  }
-
-  // Group files by project_id
-  const filesByProject = new Map<number, FileRow[]>();
+  const filesByProject = new Map<number, FileSlots>();
   (fileData ?? []).forEach((f) => {
-    if (typeof f.project_id === "number") {
-      const arr = filesByProject.get(f.project_id) ?? [];
-      arr.push(f);
-      filesByProject.set(f.project_id, arr);
+    if (typeof f.project_id !== "number") return;
+    const slots = filesByProject.get(f.project_id) ?? {};
+    const slot = classifyFile(f);
+    if (slot && !slots[slot]) {
+      const name = basename(f.path) || f.kind || "file";
+      // TODO: replace '#' with a signed Supabase Storage URL
+      slots[slot] = { href: "#", label: name };
     }
+    filesByProject.set(f.project_id, slots);
   });
 
-  return (
-    <main style={{ padding: 16 }}>
-      <h1 style={{ margin: 0 }}>Projects</h1>
-      <p style={{ color: "#666", marginTop: 4 }}>
-        {projects.length} record{projects.length === 1 ? "" : "s"}
-      </p>
+  const rows = (projData ?? []).map((p) => ({
+    id: p.id,
+    reference: p.project_name ?? "",
+    customer: p.customer ?? "",
+    certification_type: p.certification_type ?? "",
+    inspection_date: fmtDate(p.inspection_date),
+    city: p.city ?? "",
+    status: p.audit_status ?? "",
+    notes: p.notes ?? "",
+    files: filesByProject.get(p.id) ?? {},
+  }));
 
-      <div style={{ overflowX: "auto", marginTop: 12 }}>
-        <table
-          style={{
-            borderCollapse: "collapse",
-            width: "100%",
-            fontSize: 14,
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <thead style={{ background: "#f9fafb" }}>
-            <tr>
-              {[
-                "ID",
-                "Year",
-                "Project name",
-                "Customer",
-                "City",
-                "Inspection date",
-                "Audit status",
-                "Certification type",
-                "Notes",
-                "Last updated",
-                "Files",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    borderBottom: "1px solid #e5e7eb",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {projects.length === 0 ? (
-              <tr>
-                <td colSpan={11} style={{ padding: 12, color: "#666" }}>
-                  No data yet.
-                </td>
-              </tr>
-            ) : (
-              projects.map((p) => {
-                const files = filesByProject.get(p.id) ?? [];
-                return (
-                  <tr key={p.id} style={{ background: "white" }}>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.id}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.year ?? ""}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.project_name ?? ""}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.customer ?? ""}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.city ?? ""}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{fmtDate(p.inspection_date)}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.audit_status ?? ""}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{p.certification_type ?? ""}</td>
-                    <td
-                      style={{
-                        padding: "8px 10px",
-                        borderBottom: "1px solid #f1f5f9",
-                        maxWidth: 360,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={p.notes ?? ""}
-                    >
-                      {p.notes ?? ""}
-                    </td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>{fmtDate(p.last_updated)}</td>
-                    <td style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                      {files.length === 0 ? (
-                        <span style={{ color: "#64748b" }}>0</span>
-                      ) : (
-                        <details>
-                          <summary>{files.length} file{files.length === 1 ? "" : "s"}</summary>
-                          <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
-                            {files.map((f) => (
-                              <li key={f.id} style={{ listStyle: "disc" }}>
-                                {f.kind ?? "file"}{" "}
-                                <span style={{ color: "#64748b" }}>
-                                  {f.mime ?? ""} {f.size ? `(${f.size} B)` : ""}
-                                </span>
-                                {f.path ? (
-                                  <>
-                                    {" "}
-                                    — <code style={{ background: "#f1f5f9", padding: "0 4px" }}>{f.path}</code>
-                                  </>
-                                ) : null}
-                                {f.uploaded_at ? ` • ${fmtDate(f.uploaded_at)}` : ""}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <main className="mx-auto p-6 lg:p-8">
+      <ProjectsClient initialRows={rows} />
     </main>
   );
 }
