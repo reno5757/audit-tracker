@@ -2,13 +2,14 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import ProjectsClient from "@/components/ProjectsClient";
+import NewProjectButton from "@/components/NewProjectButton"; // ⟵ add this
 
 export const revalidate = 0;
 
 type Project = {
   id: number;
-  year: number | null;
-  project_name: string | null;
+  year : number;
+  reference: string | null;
   customer: string | null;
   city: string | null;
   inspection_date: string | null;
@@ -71,15 +72,14 @@ const classifyFile = (f: FileRow): FileSlot | undefined => {
 
 export default async function Page() {
   const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await createClient();
 
   const { data: projData, error: pErr } = await supabase
     .from("projects")
     .select(
-      "id, year, project_name, customer, city, inspection_date, audit_status, certification_type, notes, last_updated"
+      "id, year, reference, customer, city, inspection_date, audit_status, certification_type, notes, last_updated"
     )
-    .order("year", { ascending: false })
-    .order("id", { ascending: false });
+    .order("inspection_date", { ascending: false })
 
   if (pErr) {
     return (
@@ -112,7 +112,7 @@ export default async function Page() {
 
   const rows = (projData ?? []).map((p) => ({
     id: p.id,
-    reference: p.project_name ?? "",
+    reference: p.reference ?? "",
     customer: p.customer ?? "",
     certification_type: p.certification_type ?? "",
     inspection_date: fmtDate(p.inspection_date),
@@ -124,6 +124,11 @@ export default async function Page() {
 
   return (
     <main className="mx-auto p-6 lg:p-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Projects</h1>
+        <NewProjectButton /> {/* ⟵ the button lives here */}
+      </div>
+
       <ProjectsClient initialRows={rows} />
     </main>
   );
