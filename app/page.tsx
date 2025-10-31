@@ -1,14 +1,14 @@
-// app/page.tsx
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import ProjectsClient from "@/components/ProjectsClient";
-import NewProjectButton from "@/components/NewProjectButton"; // ⟵ add this
+import NewProjectButton from "@/components/NewProjectButton";
+import { FolderKanban } from "lucide-react";
 
 export const revalidate = 0;
 
 type Project = {
   id: number;
-  year : number;
+  year: number;
   reference: string | null;
   customer: string | null;
   city: string | null;
@@ -22,7 +22,13 @@ type Project = {
 type FileRow = {
   id: number;
   project_id: number | null;
-  kind: string | null;
+  slot:
+    | "inspectionPlanPDF"
+    | "auditReportPDF"
+    | "auditReportWord"
+    | "invoicePDF"
+    | "travelFeesZIP"
+    | null;
   path: string | null;
   mime: string | null;
   size: number | null;
@@ -31,7 +37,11 @@ type FileRow = {
 };
 
 const fmtDate = (d: string | null) =>
-  !d ? "" : isNaN(+new Date(d)) ? (d as string) : new Date(d as string).toISOString().slice(0, 10);
+  !d
+    ? ""
+    : isNaN(+new Date(d))
+    ? (d as string)
+    : new Date(d as string).toISOString().slice(0, 10);
 
 const basename = (p?: string | null) => {
   if (!p) return "";
@@ -48,38 +58,37 @@ const FILE_SLOTS = [
 ] as const;
 
 type FileSlot = (typeof FILE_SLOTS)[number];
-type FileSlots = Partial<Record<FileSlot, { href: string; label: string }>>;
+type FileSlots = Partial<Record<FileSlot, { path: string; label: string; kind: 'pdf' | 'word' | 'zip' }>>;
 
-const classifyFile = (f: FileRow): FileSlot | undefined => {
-  const k = (f.kind || "").toLowerCase();
-  const m = (f.mime || "").toLowerCase();
-  const p = (f.path || "").toLowerCase();
-  const has = (s: string) => k.includes(s) || p.includes(s);
-
-  if ((m.includes("pdf") || has("pdf")) && (has("inspection") || has("plan") || has("inspection_plan")))
-    return "inspectionPlanPDF";
-  if (m.includes("pdf") && (has("audit") || has("report"))) return "auditReportPDF";
-  if (
-    (m.includes("word") || m.includes("msword") || m.includes("doc") || m.includes("docx") || p.endsWith(".doc") || p.endsWith(".docx")) &&
-    (has("audit") || has("report"))
-  )
-    return "auditReportWord";
-  if ((m.includes("pdf") || has("pdf")) && (has("invoice") || has("facture"))) return "invoicePDF";
-  if ((m.includes("zip") || p.endsWith(".zip")) && (has("travel") || has("fees") || has("expenses") || has("frais") || has("deplacement")))
-    return "travelFeesZIP";
-  return undefined;
-};
+const classifyFile = (f: FileRow): FileSlot | undefined =>
+  (f.slot as FileSlot) || undefined;
 
 export default async function Page() {
   const cookieStore = await cookies();
   const supabase = await createClient();
 
+  // --- Get current user & check admin ---
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+  if (user) {
+    const { data } = await supabase
+      .from("admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .single();
+    isAdmin = !!data;
+  }
+
+  // --- Load projects ---
   const { data: projData, error: pErr } = await supabase
     .from("projects")
     .select(
       "id, year, reference, customer, city, inspection_date, audit_status, certification_type, notes, last_updated"
     )
-    .order("inspection_date", { ascending: false })
+    .order("inspection_date", { ascending: false });
 
   if (pErr) {
     return (
@@ -92,24 +101,42 @@ export default async function Page() {
     );
   }
 
+  // --- Load files (with slot) ---
   const { data: fileData, error: fErr } = await supabase
     .from("files")
-    .select("id, project_id, kind, path, mime, size, uploaded_by, uploaded_at");
+    .select("id, project_id, slot, path, mime, size, uploaded_by, uploaded_at");
+
   if (fErr) console.error(fErr);
 
+  // --- Group files by project ---
   const filesByProject = new Map<number, FileSlots>();
   (fileData ?? []).forEach((f) => {
     if (typeof f.project_id !== "number") return;
     const slots = filesByProject.get(f.project_id) ?? {};
     const slot = classifyFile(f);
     if (slot && !slots[slot]) {
-      const name = basename(f.path) || f.kind || "file";
-      // TODO: replace '#' with a signed Supabase Storage URL
-      slots[slot] = { href: "#", label: name };
+      const name = basename(f.path) || slot || "file";
+      const mime = (f.mime || "").toLowerCase();
+      const p = (f.path || "").toLowerCase();
+
+      let kind: 'pdf' | 'word' | 'zip' = 'pdf'; // default
+      if (mime.includes('zip') || p.endsWith('.zip')) kind = 'zip';
+      else if (
+        mime.includes('word') ||
+        mime.includes('msword') ||
+        mime.includes('doc') ||
+        mime.includes('docx') ||
+        p.endsWith('.doc') ||
+        p.endsWith('.docx')
+      )
+        kind = 'word';
+
+      slots[slot] = { path: f.path!, label: name, kind };
     }
     filesByProject.set(f.project_id, slots);
   });
 
+  // --- Combine projects + files ---
   const rows = (projData ?? []).map((p) => ({
     id: p.id,
     reference: p.reference ?? "",
@@ -122,14 +149,33 @@ export default async function Page() {
     files: filesByProject.get(p.id) ?? {},
   }));
 
+ 
+  // --- Render page ---
   return (
     <main className="mx-auto p-6 lg:p-8">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Projects</h1>
-        <NewProjectButton /> {/* ⟵ the button lives here */}
-      </div>
+      {user && isAdmin && (
+        <div className="text-sm text-gray-600 mb-2">
+          Logged in as <span className="font-medium">admin</span> for {user.email}
+          {" · "}
+          <a href="/logout" className="text-blue-600 hover:underline">
+            Logout
+          </a>
+        </div>
+      )}
 
-      <ProjectsClient initialRows={rows} />
+    <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+          <FolderKanban className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Audits Efectis </h1>
+        </div>
+      </div>
+      {user && isAdmin && <NewProjectButton />}
+    </div>
+
+      <ProjectsClient initialRows={rows} isAdmin={isAdmin}/>
     </main>
   );
 }

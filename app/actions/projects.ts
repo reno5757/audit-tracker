@@ -97,7 +97,7 @@ export async function createProjectWithFiles(
 
   // 3) Collect files from FormData
   type PendingUpload = {
-    slotName: string;
+    slotName: 'inspectionPlanPDF' | 'auditReportPDF' | 'auditReportWord' | 'invoicePDF' | 'travelFeesZIP';    
     kind: string;
     file: File;
     path: string; // storage path (bucket-relative)
@@ -125,7 +125,8 @@ export async function createProjectWithFiles(
         return { ok: false, error: `File too large for ${slot.name} (max ${slot.maxMB} MB)` };
       }
       const safeName = slugifyFilename((f as any).name || `${slot.name}.bin`);
-      const path = `projects/${projectId}/${slot.kind}/${safeName}`;
+      const refSlug = reference.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const path = `audits/${refSlug}/${slot.kind}/${safeName}`;
       pending.push({ slotName: slot.name, kind: slot.kind, file: f, path, mime, size: f.size });
     }
   }
@@ -149,6 +150,7 @@ export async function createProjectWithFiles(
         .from('files')
         .insert({
           project_id: projectId,
+          slot: item.slotName,
           kind: item.kind,
           path: item.path,
           mime: item.mime,

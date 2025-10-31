@@ -10,7 +10,8 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { FileText, FileArchive, FileType } from "lucide-react";
+import SignedFileBadge from "@/components/SignedFileBadge";
+import EditProjectButton from '@/components/EditProjectButton';
 
 type Row = {
   id: number;
@@ -22,15 +23,15 @@ type Row = {
   status: string;
   notes: string;
   files: Partial<{
-    inspectionPlanPDF: { href: string; label: string };
-    auditReportPDF: { href: string; label: string };
-    auditReportWord: { href: string; label: string };
-    invoicePDF: { href: string; label: string };
-    travelFeesZIP: { href: string; label: string };
+    inspectionPlanPDF: { path: string; label: string };
+    auditReportPDF: { path: string; label: string };
+    auditReportWord: { path: string; label: string };
+    invoicePDF: { path: string; label: string };
+    travelFeesZIP: { path: string; label: string };
   }>;
 };
 
-type Props = { rows: Row[] };
+type Props = { rows: Row[] ; isAdmin?: boolean };
 
 const statusClasses = (s?: string | null) => {
   const base =
@@ -51,43 +52,6 @@ const statusClasses = (s?: string | null) => {
   }
 };
 
-type FileKind = "pdf" | "word" | "zip";
-
-const truncate15 = (s?: string) =>
-  !s ? "—" : s.length > 15 ? s.slice(0, 12) + "…" : s;
-
-const fileBadge = (kind: FileKind, href?: string, fullName?: string) => {
-  const base =
-    "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium truncate max-w-[15ch]";
-  const styles =
-    kind === "pdf"
-      ? "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100"
-      : kind === "word"
-      ? "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100"
-      : "bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100";
-
-  const Icon = kind === "pdf" ? FileText : kind === "word" ? FileType : FileArchive;
-  const label = truncate15(fullName);
-
-  return href ? (
-    <a
-      href={href}
-      className={`${base} ${styles}`}
-      title={fullName}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <Icon className="h-5 w-5 shrink-0" />
-    </a>
-  ) : (
-    <span
-      className={`${base} text-slate-400`}
-      title="No file"
-    >
-      -
-    </span>
-  );
-};
 
 // -------- tanstack: helpers for sorting --------
 const parseDateSafe = (s: string) => {
@@ -105,7 +69,7 @@ const statusRank = (s: string) => {
   return 0; // unknown/empty
 };
 
-export default function ProjectsTable({ rows }: Props) {
+export default function ProjectsTable({ rows, isAdmin = false }: Props) {
   const [sorting, setSorting] = React.useState<SortingState>([
     // default sort (optional): by inspection date desc
     { id: "inspection_date", desc: true },
@@ -149,7 +113,7 @@ export default function ProjectsTable({ rows }: Props) {
         header: StaticHeader("Certification Type"),
         cell: ({ row }) =>
           row.original.certification_type ? (
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700 ring-1 ring-inset ring-slate-200">
+            <span className="truncate max-w-[24ch] text-slate-700 block">
               {row.original.certification_type}
             </span>
           ) : (
@@ -209,12 +173,13 @@ export default function ProjectsTable({ rows }: Props) {
       {
         id: "inspection_plan",
         header: StaticHeader("Inspection Plan"),
-        cell: ({ row }) =>
-          fileBadge(
-            "pdf",
-            row.original.files.inspectionPlanPDF?.href,
-            row.original.files.inspectionPlanPDF?.label
-          ),
+        cell: ({ row }) => (
+          <SignedFileBadge
+            kind="pdf"
+            path={row.original.files.inspectionPlanPDF?.path}
+            label={row.original.files.inspectionPlanPDF?.label}
+          />
+        ),
         enableSorting: false,
       },
       {
@@ -222,16 +187,16 @@ export default function ProjectsTable({ rows }: Props) {
         header: StaticHeader("Audit Report"),
         cell: ({ row }) => (
           <div className="inline-flex items-center gap-2">
-            {fileBadge(
-              "pdf",
-              row.original.files.auditReportPDF?.href,
-              row.original.files.auditReportPDF?.label
-            )}
-            {fileBadge(
-              "word",
-              row.original.files.auditReportWord?.href,
-              row.original.files.auditReportWord?.label
-            )}
+            <SignedFileBadge
+              kind="pdf"
+              path={row.original.files.auditReportPDF?.path}
+              label={row.original.files.auditReportPDF?.label}
+            />
+            <SignedFileBadge
+              kind="word"
+              path={row.original.files.auditReportWord?.path}
+              label={row.original.files.auditReportWord?.label}
+            />
           </div>
         ),
         enableSorting: false,
@@ -239,25 +204,50 @@ export default function ProjectsTable({ rows }: Props) {
       {
         id: "invoice_pdf",
         header: StaticHeader("Invoice"),
-        cell: ({ row }) =>
-          fileBadge(
-            "pdf",
-            row.original.files.invoicePDF?.href,
-            row.original.files.invoicePDF?.label
-          ),
+        cell: ({ row }) => (
+          <SignedFileBadge
+            kind="pdf"
+            path={row.original.files.invoicePDF?.path}
+            label={row.original.files.invoicePDF?.label}
+          />
+        ),
         enableSorting: false,
       },
       {
         id: "travel_fees",
         header: StaticHeader("Travel Fees"),
-        cell: ({ row }) =>
-          fileBadge(
-            "zip",
-            row.original.files.travelFeesZIP?.href,
-            row.original.files.travelFeesZIP?.label
-          ),
+        cell: ({ row }) => (
+          <SignedFileBadge
+            kind="zip"
+            path={row.original.files.travelFeesZIP?.path}
+            label={row.original.files.travelFeesZIP?.label}
+          />
+        ),
         enableSorting: false,
       },
+      {
+      id: 'actions',
+      header: StaticHeader(''),
+      cell: ({ row }) => {
+        const r = row.original;
+
+        if (!isAdmin) return null; // hide if not admin
+
+        const project = {
+          id: r.id,
+          reference: r.reference,
+          customer: r.customer,
+          certification_type: r.certification_type,
+          city: r.city,
+          inspection_date: r.inspection_date || null, // '' -> null
+          audit_status: r.status,                     // map to dialog prop
+          notes: r.notes || null,                     // '' -> null
+        };
+        return <EditProjectButton project={project} />;
+      },
+      enableSorting: false,
+      size: 120,
+    },
     ],
     []
   );
