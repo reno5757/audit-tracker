@@ -8,13 +8,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { formatDate } from '@/utils/date';
+
+// ⬇️ shadcn Select
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 const initialState: CreateProjectResult | null = null;
 
+// Keep in sync with server-side Zod enum
+const STATUS_OPTIONS = [
+  'Planned',
+  'Scheduled',
+  'In progress',
+  'Waiting report',
+  'Completed',
+  'Cancelled',
+] as const;
+
 export default function NewProjectDialog({ open, onOpenChange }: Props) {
   const router = useRouter();
   const [state, formAction, isPending] = React.useActionState(createProjectWithFiles, initialState);
+
+  // Local state for Status Select (default to "Planned")
+  const [status, setStatus] = React.useState<string>('Planned');
 
   React.useEffect(() => {
     if (state?.ok) {
@@ -49,7 +72,9 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
             <div>
               <label className="block text-sm mb-1">Certification Type *</label>
               <Input name="certification_type" required />
-              {fieldError('certification_type') && <p className="text-sm text-red-600">{fieldError('certification_type')}</p>}
+              {fieldError('certification_type') && (
+                <p className="text-sm text-red-600">{fieldError('certification_type')}</p>
+              )}
             </div>
           </div>
 
@@ -66,9 +91,28 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          {/* Status (shadcn Select + hidden input for form submit) */}
           <div>
-            <label className="block text-sm mb-1">Status *</label>
-            <Input name="status" required />
+            <label htmlFor="status" className="block text-sm mb-1">
+              Status *
+            </label>
+
+            {/* Hidden input that the server action reads */}
+            <input type="hidden" name="status" value={status} required />
+
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status" className="w-full">
+                <SelectValue placeholder="Select a status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {fieldError('status') && <p className="text-sm text-red-600">{fieldError('status')}</p>}
           </div>
 
@@ -77,7 +121,7 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
             <Textarea name="notes" rows={3} />
           </div>
 
-          {/* File inputs (simple drop-in; replace with your Dropzone UI if you want) */}
+          {/* File inputs */}
           <div className="pt-2 space-y-3">
             <div>
               <label className="block text-sm mb-1">Inspection plan (PDF, ≤25 MB)</label>
@@ -106,9 +150,7 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Global error */}
-          {!state?.ok && state?.error && (
-            <p className="text-sm text-red-600">{state.error}</p>
-          )}
+          {!state?.ok && state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>

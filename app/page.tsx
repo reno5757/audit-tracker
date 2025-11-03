@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import ProjectsClient from "@/components/ProjectsClient";
 import NewProjectButton from "@/components/NewProjectButton";
+import UserMenu from "@/components/UserMenu";
 import { FolderKanban } from "lucide-react";
 
 export const revalidate = 0;
@@ -58,13 +58,14 @@ const FILE_SLOTS = [
 ] as const;
 
 type FileSlot = (typeof FILE_SLOTS)[number];
-type FileSlots = Partial<Record<FileSlot, { path: string; label: string; kind: 'pdf' | 'word' | 'zip' }>>;
+type FileSlots = Partial<
+  Record<FileSlot, { path: string; label: string; kind: "pdf" | "word" | "zip" }>
+>;
 
 const classifyFile = (f: FileRow): FileSlot | undefined =>
   (f.slot as FileSlot) || undefined;
 
 export default async function Page() {
-  const cookieStore = await cookies();
   const supabase = await createClient();
 
   // --- Get current user & check admin ---
@@ -119,17 +120,17 @@ export default async function Page() {
       const mime = (f.mime || "").toLowerCase();
       const p = (f.path || "").toLowerCase();
 
-      let kind: 'pdf' | 'word' | 'zip' = 'pdf'; // default
-      if (mime.includes('zip') || p.endsWith('.zip')) kind = 'zip';
+      let kind: "pdf" | "word" | "zip" = "pdf"; // default
+      if (mime.includes("zip") || p.endsWith(".zip")) kind = "zip";
       else if (
-        mime.includes('word') ||
-        mime.includes('msword') ||
-        mime.includes('doc') ||
-        mime.includes('docx') ||
-        p.endsWith('.doc') ||
-        p.endsWith('.docx')
+        mime.includes("word") ||
+        mime.includes("msword") ||
+        mime.includes("doc") ||
+        mime.includes("docx") ||
+        p.endsWith(".doc") ||
+        p.endsWith(".docx")
       )
-        kind = 'word';
+        kind = "word";
 
       slots[slot] = { path: f.path!, label: name, kind };
     }
@@ -149,33 +150,35 @@ export default async function Page() {
     files: filesByProject.get(p.id) ?? {},
   }));
 
- 
   // --- Render page ---
   return (
     <main className="mx-auto p-6 lg:p-8">
-      {user && isAdmin && (
-        <div className="text-sm text-gray-600 mb-2">
-          Logged in as <span className="font-medium">admin</span> for {user.email}
-          {" · "}
-          <a href="/logout" className="text-blue-600 hover:underline">
-            Logout
-          </a>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+            <FolderKanban className="h-5 w-5" />
+          </div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Audits Efectis
+          </h1>
         </div>
-      )}
 
-    <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div className="flex items-center gap-2">
-        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-          <FolderKanban className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Audits Efectis </h1>
+        <div className="flex items-center gap-3">
+          {user && isAdmin && <NewProjectButton />}
+          {user ? (
+            <UserMenu email={user.email} isAdmin={isAdmin} />
+          ) : (
+            <a
+              href="/login"
+              className="rounded-lg border bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Sign in
+            </a>
+          )}
         </div>
       </div>
-      {user && isAdmin && <NewProjectButton />}
-    </div>
 
-      <ProjectsClient initialRows={rows} isAdmin={isAdmin}/>
+      <ProjectsClient initialRows={rows} isAdmin={isAdmin} />
     </main>
   );
 }

@@ -12,6 +12,8 @@ import {
 } from "@tanstack/react-table";
 import SignedFileBadge from "@/components/SignedFileBadge";
 import EditProjectButton from '@/components/EditProjectButton';
+import { formatDate } from '@/utils/date';
+
 
 type Row = {
   id: number;
@@ -32,20 +34,36 @@ type Row = {
 };
 
 type Props = { rows: Row[] ; isAdmin?: boolean };
+// Canonical statuses used across the app
+type Status =
+  | 'Planned'
+  | 'Scheduled'
+  | 'In progress'
+  | 'Waiting report'
+  | 'Completed'
+  | 'Cancelled';
 
+// Normalize any incoming status (case/whitespace tolerant)
+const norm = (s?: string | null) =>
+  (s ?? '').trim().toLowerCase();
+
+// Badge colors per status (Tailwind + shadcn style)
 const statusClasses = (s?: string | null) => {
+  const v = norm(s);
   const base =
     "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1";
-  switch ((s || "").toLowerCase()) {
-    case "passed":
-    case "ok":
-    case "approved":
-      return `${base} text-emerald-700 ring-emerald-200 bg-emerald-50`;
-    case "pending":
-    case "in progress":
+  switch (v) {
+    case 'planned':
+      return `${base} text-slate-700 ring-slate-200 bg-slate-50`;
+    case 'scheduled':
+      return `${base} text-sky-700 ring-sky-200 bg-sky-50`;
+    case 'in progress':
       return `${base} text-amber-700 ring-amber-200 bg-amber-50`;
-    case "failed":
-    case "rejected":
+    case 'waiting report':
+      return `${base} text-violet-700 ring-violet-200 bg-violet-50`;
+    case 'completed':
+      return `${base} text-emerald-700 ring-emerald-200 bg-emerald-50`;
+    case 'cancelled':
       return `${base} text-rose-700 ring-rose-200 bg-rose-50`;
     default:
       return `${base} text-slate-700 ring-slate-200 bg-slate-50`;
@@ -62,12 +80,17 @@ const parseDateSafe = (s: string) => {
 
 // Optional custom order for status, fallback to alpha
 const statusRank = (s: string) => {
-  const v = s.toLowerCase();
-  if (["approved", "passed", "ok"].includes(v)) return 3;
-  if (["pending", "in progress"].includes(v)) return 2;
-  if (["failed", "rejected"].includes(v)) return 1;
-  return 0; // unknown/empty
+  switch (norm(s)) {
+    case 'planned':         return 0;
+    case 'scheduled':       return 1;
+    case 'in progress':     return 2;
+    case 'waiting report':  return 3;
+    case 'completed':       return 4;
+    case 'cancelled':       return 5; // usually sorted last
+    default:                return 99;
+  }
 };
+
 
 export default function ProjectsTable({ rows, isAdmin = false }: Props) {
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -127,7 +150,7 @@ export default function ProjectsTable({ rows, isAdmin = false }: Props) {
         header: Header("Inspection Date"),
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-slate-700">
-            {row.original.inspection_date}
+            {formatDate(row.original.inspection_date)}
           </span>
         ),
         sortingFn: (a, b, colId) =>

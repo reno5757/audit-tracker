@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFormStatus } from 'react-dom';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -27,6 +35,16 @@ type Props = {
 
 const initialState: UpdateProjectResult | null = null;
 
+// Allowed statuses (keep in sync with your server-side Zod enum)
+const STATUS_OPTIONS = [
+  'Planned',
+  'Scheduled',
+  'In progress',
+  'Waiting report',
+  'Completed',
+  'Cancelled',
+] as const;
+
 // Small helper so the Delete button shows pending state using react-dom's useFormStatus
 function DeleteSubmitButton() {
   const { pending } = useFormStatus();
@@ -40,6 +58,12 @@ function DeleteSubmitButton() {
 export default function EditProjectDialog({ open, onOpenChange, project }: Props) {
   const router = useRouter();
   const [state, formAction, isPending] = React.useActionState(updateProjectWithFiles, initialState);
+
+  // Local state for shadcn Select
+  const [status, setStatus] = React.useState<string>(project.audit_status ?? '');
+  React.useEffect(() => {
+    setStatus(project.audit_status ?? '');
+  }, [project.audit_status]);
 
   React.useEffect(() => {
     if (state?.ok) {
@@ -96,9 +120,28 @@ export default function EditProjectDialog({ open, onOpenChange, project }: Props
             </div>
           </div>
 
+          {/* Status (shadcn Select) */}
           <div>
-            <label className="block text-sm mb-1">Status *</label>
-            <Input name="status" defaultValue={project.audit_status} required />
+            <label htmlFor="status" className="block text-sm mb-1">
+              Status *
+            </label>
+
+            {/* Hidden input to actually submit via form */}
+            <input type="hidden" name="status" value={status} required />
+
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status" className="w-full">
+                <SelectValue placeholder="Select a status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {fieldError('status') && <p className="text-sm text-red-600">{fieldError('status')}</p>}
           </div>
 
@@ -152,7 +195,6 @@ export default function EditProjectDialog({ open, onOpenChange, project }: Props
         {/* DELETE FORM — sibling to the update form (no nesting) */}
         <form
           action={async (formData) => {
-            // Server action call; on success, close dialog and refresh.
             const res = await deleteProjectAction(formData);
             if (res.ok) {
               onOpenChange(false);
