@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -227,5 +227,14 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  // Wrap the part that uses useSearchParams with Suspense (required by Next)
+  return (
+    <Suspense fallback={<div className="text-center text-sm text-slate-500">Chargement…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }

@@ -7,16 +7,41 @@ import { createClient } from '@/utils/supabase/server';
 
 const BUCKET = 'audit-files';
 
-const FileSlots = [
-  { name: 'inspectionPlanPDF', kind: 'pdf', accept: ['application/pdf'], maxMB: 25 },
-  { name: 'auditReportPDF',    kind: 'pdf', accept: ['application/pdf'], maxMB: 25 },
-  { name: 'auditReportWord',   kind: 'doc', accept: [
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ], maxMB: 20 },
-  { name: 'invoicePDF',        kind: 'pdf', accept: ['application/pdf'], maxMB: 15 },
-  { name: 'travelFeesZIP',     kind: 'zip', accept: ['application/zip', 'application/x-zip-compressed'], maxMB: 50 },
-] as const;
+  // 1) Define a slot type with a widened `accept`
+  type FileSlot = {
+    name:
+      | 'inspectionPlanPDF'
+      | 'auditReportPDF'
+      | 'auditReportWord'
+      | 'invoicePDF'
+      | 'travelFeesZIP';
+    kind: 'pdf' | 'doc' | 'zip';
+    accept: readonly string[];   // <-- widen element type
+    maxMB: number;
+  };
+
+  // 2) Use `satisfies` so contents stay checked, but type is widened
+  const FileSlots = [
+    { name: 'inspectionPlanPDF', kind: 'pdf', accept: ['application/pdf'], maxMB: 25 },
+    { name: 'auditReportPDF',    kind: 'pdf', accept: ['application/pdf'], maxMB: 25 },
+    {
+      name: 'auditReportWord',
+      kind: 'doc',
+      accept: [
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ],
+      maxMB: 20,
+    },
+    { name: 'invoicePDF',    kind: 'pdf', accept: ['application/pdf'], maxMB: 15 },
+    {
+      name: 'travelFeesZIP',
+      kind: 'zip',
+      accept: ['application/zip', 'application/x-zip-compressed'],
+      maxMB: 50,
+    },
+  ] satisfies readonly FileSlot[]; // <-- key line
+
 
 function slugifyFilename(name: string) {
   const i = name.lastIndexOf('.');
