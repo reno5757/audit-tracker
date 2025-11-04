@@ -1,4 +1,3 @@
-// components/NewProjectDialog.tsx
 'use client';
 
 import * as React from 'react';
@@ -22,22 +21,22 @@ import {
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 const initialState: CreateProjectResult | null = null;
 
-// Keep in sync with server-side Zod enum
+// Déjà traduit
 const STATUS_OPTIONS = [
-  'Planned',
-  'Scheduled',
-  'In progress',
-  'Waiting report',
-  'Completed',
-  'Cancelled',
+  'A planifier',
+  'Planifié',
+  'En cours',
+  'Rédaction rapport',
+  'Terminé',
+  'Annulé',
 ] as const;
 
 export default function NewProjectDialog({ open, onOpenChange }: Props) {
   const router = useRouter();
   const [state, formAction, isPending] = React.useActionState(createProjectWithFiles, initialState);
 
-  // Local state for Status Select (default to "Planned")
-  const [status, setStatus] = React.useState<string>('Planned');
+  // État local du champ "Statut"
+  const [status, setStatus] = React.useState<string>('A planifier');
 
   React.useEffect(() => {
     if (state?.ok) {
@@ -52,25 +51,25 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
+          <DialogTitle>Nouveau projet</DialogTitle>
         </DialogHeader>
 
         <form action={formAction} className="space-y-4">
-          {/* Text fields */}
+          {/* Champs texte */}
           <div>
-            <label className="block text-sm mb-1">Reference *</label>
+            <label className="block text-sm mb-1">Référence *</label>
             <Input name="reference" required />
             {fieldError('reference') && <p className="text-sm text-red-600">{fieldError('reference')}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1">Customer *</label>
+              <label className="block text-sm mb-1">Client *</label>
               <Input name="customer" required />
               {fieldError('customer') && <p className="text-sm text-red-600">{fieldError('customer')}</p>}
             </div>
             <div>
-              <label className="block text-sm mb-1">Certification Type *</label>
+              <label className="block text-sm mb-1">Type de certification *</label>
               <Input name="certification_type" required />
               {fieldError('certification_type') && (
                 <p className="text-sm text-red-600">{fieldError('certification_type')}</p>
@@ -80,29 +79,29 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1">City *</label>
+              <label className="block text-sm mb-1">Ville *</label>
               <Input name="city" required />
               {fieldError('city') && <p className="text-sm text-red-600">{fieldError('city')}</p>}
             </div>
             <div>
-              <label className="block text-sm mb-1">Inspection Date</label>
+              <label className="block text-sm mb-1">Date d’inspection</label>
               <Input type="date" name="inspection_date" />
               {fieldError('inspection_date') && <p className="text-sm text-red-600">{fieldError('inspection_date')}</p>}
             </div>
           </div>
 
-          {/* Status (shadcn Select + hidden input for form submit) */}
+          {/* Statut */}
           <div>
             <label htmlFor="status" className="block text-sm mb-1">
-              Status *
+              Statut *
             </label>
 
-            {/* Hidden input that the server action reads */}
+            {/* Input caché pour la soumission du formulaire */}
             <input type="hidden" name="status" value={status} required />
 
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger id="status" className="w-full">
-                <SelectValue placeholder="Select a status" />
+                <SelectValue placeholder="Sélectionner un statut" />
               </SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((opt) => (
@@ -118,21 +117,21 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
 
           <div>
             <label className="block text-sm mb-1">Notes</label>
-            <Textarea name="notes" rows={3} />
+            <Textarea name="notes" rows={3} placeholder="Commentaires, remarques, contexte…" />
           </div>
 
-          {/* File inputs */}
+          {/* Fichiers */}
           <div className="pt-2 space-y-3">
             <div>
-              <label className="block text-sm mb-1">Inspection plan (PDF, ≤25 MB)</label>
+              <label className="block text-sm mb-1">Plan d’inspection (PDF, ≤25 Mo)</label>
               <Input type="file" name="inspectionPlanPDF" accept="application/pdf" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Audit report (PDF, ≤25 MB)</label>
+              <label className="block text-sm mb-1">Rapport d’audit (PDF, ≤25 Mo)</label>
               <Input type="file" name="auditReportPDF" accept="application/pdf" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Audit report (Word .doc/.docx, ≤20 MB)</label>
+              <label className="block text-sm mb-1">Rapport d’audit (Word .doc/.docx, ≤20 Mo)</label>
               <Input
                 type="file"
                 name="auditReportWord"
@@ -140,24 +139,25 @@ export default function NewProjectDialog({ open, onOpenChange }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">Invoice (PDF, ≤15 MB)</label>
+              <label className="block text-sm mb-1">Facture (PDF, ≤15 Mo)</label>
               <Input type="file" name="invoicePDF" accept="application/pdf" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Travel fees (ZIP, ≤50 MB)</label>
+              <label className="block text-sm mb-1">Frais de déplacement (ZIP, ≤50 Mo)</label>
               <Input type="file" name="travelFeesZIP" accept=".zip,application/zip,application/x-zip-compressed" />
             </div>
           </div>
 
-          {/* Global error */}
+          {/* Erreur globale */}
           {!state?.ok && state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
+          {/* Boutons d’action */}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-              Cancel
+              Annuler
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Creating…' : 'Save'}
+              {isPending ? 'Création…' : 'Enregistrer'}
             </Button>
           </div>
         </form>

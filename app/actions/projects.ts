@@ -7,13 +7,23 @@ import { createClient } from '@/utils/supabase/server';
 
 const BUCKET = 'audit-files';
 
+const StatusValues = [
+  'A planifier',
+  'Planifié',
+  'En cours',
+  'Rédaction rapport',
+  'Terminé',
+  'Annulé',
+] as const;
+type Status = typeof StatusValues[number];
+
 const ProjectInsertSchema = z.object({
   reference: z.string().min(1).transform(s => s.trim()),
   customer: z.string().min(1).transform(s => s.trim()),
   certification_type: z.string().min(1).transform(s => s.trim()),
   city: z.string().min(1).transform(s => s.trim()),
-  inspection_date: z.string().optional().or(z.literal('')), // YYYY-MM-DD or ''
-  status: z.string().min(1).transform(s => s.trim()),
+  inspection_date: z.string().optional().or(z.literal('')),
+  status: z.enum(StatusValues),
   notes: z.string().optional().default(''),
 });
 

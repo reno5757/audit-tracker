@@ -15,13 +15,13 @@ export default function AuditYearSelect({
 }) {
     return (
         <label className="inline-flex items-center gap-2">
-            <span className="text-sm text-slate-600">Audit year</span>
+            <span className="text-sm text-slate-600">Année </span>
             <select
                 className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
             >
-                <option value="all">All</option>
+                <option value="all">Tous</option>
                 {years.map((y) => (
                     <option key={y} value={String(y)}>
                         {y}

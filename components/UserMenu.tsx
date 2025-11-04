@@ -33,7 +33,7 @@ export default function UserMenu({ email, isAdmin }: Props) {
         }}
       >
         <div className="px-3 py-2 text-xs text-slate-500">
-          Signed in as <span className="font-medium text-slate-700">{email}</span>
+          Connecté :  <span className="font-medium text-slate-700">{email}</span>
         </div>
         <div className="h-px bg-slate-100" />
 
@@ -42,7 +42,7 @@ export default function UserMenu({ email, isAdmin }: Props) {
           className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
         >
           <KeyRound className="h-4 w-4" />
-          Change password
+          Modifier mot de passe
         </a>
 
         <a
@@ -50,7 +50,7 @@ export default function UserMenu({ email, isAdmin }: Props) {
           className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          Déconnexion
         </a>
       </div>
     </details>

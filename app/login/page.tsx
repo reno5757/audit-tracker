@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // forgot password modal
+  // Modale “mot de passe oublié”
   const [fpOpen, setFpOpen] = useState(false);
   const [fpEmail, setFpEmail] = useState('');
   const [fpMsg, setFpMsg] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Choose persistence based on “Remember me”
+      // Persistance selon “Se souvenir de moi”
       const auth = createClient({
         storage: remember ? localStorage : sessionStorage,
       });
@@ -51,7 +52,7 @@ export default function LoginPage() {
           : '/';
       router.push(dest);
     } catch (err: any) {
-      setError(err?.message ?? 'Unexpected error.');
+      setError(err?.message ?? 'Erreur inattendue.');
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export default function LoginPage() {
           ? window.location.origin
           : process.env.NEXT_PUBLIC_SITE_URL!;
 
-      // Use persistent storage so the emailed link can establish a session
+      // Stockage persistant pour que le lien reçu puisse établir une session
       const auth = createClient({ storage: localStorage });
 
       const { error } = await auth.auth.resetPasswordForEmail(fpEmail.trim(), {
@@ -77,25 +78,38 @@ export default function LoginPage() {
       });
 
       if (error) setFpErr(error.message);
-      else setFpMsg('Check your inbox for the password reset link.');
+      else setFpMsg('Vérifiez votre boîte de réception pour le lien de réinitialisation du mot de passe.');
     } catch (err: any) {
-      setFpErr(err?.message ?? 'Unexpected error sending reset email.');
+      setFpErr(err?.message ?? 'Erreur inattendue lors de l’envoi de l’e-mail.');
     } finally {
       setFpLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-slate-50">
+    <div className="flex items-center justify-center h-screen bg-slate-50 px-4">
       <form
         onSubmit={handleLogin}
-        className="p-6 bg-white rounded-2xl shadow-md w-80 border border-slate-200"
+        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-md"
       >
-        <h1 className="text-xl font-semibold mb-4 text-center">Login</h1>
+        {/* Logo + nom de la société */}
+        <div className="mb-4 flex flex-col items-center gap-2">
+          <Image
+            src="/logo.svg"
+            alt="Logo"
+            width={128}
+            height={128}
+            className="h-12 w-12 sm:h-14 sm:w-14 rounded-md ring-1 ring-slate-200"
+            priority
+          />
+          <span className="text-sm font-semibold text-slate-900">RFagnoni Consultant</span>
+        </div>
+
+        <h1 className="mb-3 text-center text-xl font-semibold">Connexion</h1>
 
         {pwUpdated && (
           <p className="mb-3 text-sm text-green-600">
-            Password updated. Please sign in again.
+            Mot de passe mis à jour. Veuillez vous reconnecter.
           </p>
         )}
 
@@ -103,7 +117,7 @@ export default function LoginPage() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
+          placeholder="E-mail"
           className="w-full mb-3 p-2 border rounded"
           required
           autoComplete="email"
@@ -113,7 +127,7 @@ export default function LoginPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder="Mot de passe"
           className="w-full mb-2 p-2 border rounded"
           required
           autoComplete="current-password"
@@ -127,7 +141,7 @@ export default function LoginPage() {
               onChange={(e) => setRemember(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            Remember me
+            Se souvenir de moi
           </label>
 
           <button
@@ -140,31 +154,31 @@ export default function LoginPage() {
             }}
             className="text-sm text-blue-600 hover:underline"
           >
-            Forgot password?
+            Mot de passe oublié ?
           </button>
         </div>
 
-        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+        {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
         <button
           type="submit"
           disabled={loading}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors disabled:opacity-60"
         >
-          {loading ? 'Logging in…' : 'Login'}
+          {loading ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>
 
-      {/* Forgot password modal */}
+      {/* Modale “Mot de passe oublié” */}
       {fpOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Reset your password</h2>
+              <h2 className="text-lg font-semibold">Réinitialiser votre mot de passe</h2>
               <button
                 className="rounded px-2 py-1 text-slate-500 hover:bg-slate-100"
                 onClick={() => setFpOpen(false)}
-                aria-label="Close"
+                aria-label="Fermer"
               >
                 ✕
               </button>
@@ -172,13 +186,13 @@ export default function LoginPage() {
 
             <form onSubmit={handleForgotPassword}>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Email
+                E-mail
               </label>
               <input
                 type="email"
                 value={fpEmail}
                 onChange={(e) => setFpEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="vous@exemple.com"
                 className="mb-3 w-full rounded border p-2"
                 required
                 autoComplete="email"
@@ -193,21 +207,21 @@ export default function LoginPage() {
                   onClick={() => setFpOpen(false)}
                   className="rounded border px-3 py-1.5 text-sm hover:bg-slate-50"
                 >
-                  Cancel
+                  Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={fpLoading}
                   className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {fpLoading ? 'Sending…' : 'Send reset link'}
+                  {fpLoading ? 'Envoi…' : 'Envoyer le lien'}
                 </button>
               </div>
             </form>
 
             <p className="mt-3 text-xs text-slate-500">
-              We’ll email a secure link. After clicking it, you’ll be redirected
-              here to set a new password.
+              Nous vous enverrons un lien sécurisé. Après avoir cliqué dessus,
+              vous serez redirigé ici pour définir un nouveau mot de passe.
             </p>
           </div>
         </div>

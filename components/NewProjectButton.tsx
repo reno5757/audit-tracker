@@ -24,7 +24,7 @@ export default function NewProjectButton() {
         "
       >
         <Plus className="h-4 w-4" />
-        New Project
+        Nouveau projet
       </Button>
 
       <NewProjectDialog open={open} onOpenChange={setOpen} />

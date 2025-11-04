@@ -3,6 +3,7 @@ import ProjectsClient from "@/components/ProjectsClient";
 import NewProjectButton from "@/components/NewProjectButton";
 import UserMenu from "@/components/UserMenu";
 import { FolderKanban } from "lucide-react";
+import Image from "next/image";
 
 export const revalidate = 0;
 
@@ -154,30 +155,45 @@ export default async function Page() {
   return (
     <main className="mx-auto p-6 lg:p-8">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+        {/* Brand block */}
+        <div className="flex items-center gap-2">
+          <Image
+            src="/logo.svg"
+            alt="Company logo"
+            width={28}
+            height={28}
+            className="h-20 w-20"
+            priority
+          />
+          <div className="leading-tight">
+            <div className="text-s font-semibold tracking-tight text-slate-900">
+              RFagnoni Consultant
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <span className="hidden sm:block h-6 w-px bg-slate-200" />
+
+        {/* App title */}
         <div className="flex items-center gap-2">
           <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
             <FolderKanban className="h-5 w-5" />
           </div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            Audits Efectis
+            Inspections Efectis
           </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {user && isAdmin && <NewProjectButton />}
-          {user ? (
-            <UserMenu email={user.email} isAdmin={isAdmin} />
-          ) : (
-            <a
-              href="/login"
-              className="rounded-lg border bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
-            >
-              Sign in
-            </a>
-          )}
         </div>
       </div>
 
+      {/* NewProjectButton */}
+        <div className="flex items-center gap-3">
+          {user && isAdmin && <NewProjectButton />}
+          {user ? ( <UserMenu email={user.email} isAdmin={isAdmin} /> ) : ""}
+        </div>
+      </div>
+    {/*Table*/}
       <ProjectsClient initialRows={rows} isAdmin={isAdmin} />
     </main>
   );

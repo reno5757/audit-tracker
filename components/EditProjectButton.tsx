@@ -3,7 +3,7 @@
 import * as React from 'react';
 import EditProjectDialog from './EditProjectDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil } from 'lucide-react';  // ✏️ clean edit icon
+import { Pencil } from 'lucide-react';  
 
 type Project = {
   id: number;
@@ -28,7 +28,7 @@ export default function EditProjectButton({ project }: { project: Project }) {
         onClick={() => setOpen(true)}
       >
         <Pencil className="h-4 w-4" />
-        <span className="sr-only">Edit</span> {/* accessibility */}
+        <span className="sr-only">Modifier</span> {/* accessibility */}
       </Button>
 
       <EditProjectDialog open={open} onOpenChange={setOpen} project={project} />

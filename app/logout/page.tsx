@@ -18,7 +18,7 @@ export default function LogoutPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <p className="text-gray-600">Signing out...</p>
+      <p className="text-gray-600">Déconnexion en cours...</p>
     </div>
   );
 }
