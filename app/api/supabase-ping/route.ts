@@ -6,8 +6,11 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    // Use an RPC that always exists in Postgres
-    const { data, error } = await supabase.rpc("version");
+    // 👇 Replace "your_table" with a small table that always exists
+    const { data, error } = await supabase
+      .from("projects")            
+      .select("id")
+      .limit(1);
 
     if (error) {
       return NextResponse.json(
@@ -17,10 +20,13 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { ok: true, message: "Supabase ping succeeded", postgresVersion: data },
+      {
+        ok: true,
+        message: "Supabase ping succeeded",
+        rows: data?.length ?? 0,
+      },
       { status: 200 }
     );
-
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e.message },
